@@ -67,7 +67,7 @@ function printline {
 	# and i want it back
 	if [[ $PREVIOUSLINE == "" && $LINE == "" ]]
 	then
-		echo "\bigskip" >> "$OUTFILE"
+		echo '` `' >> "$OUTFILE"
 		echo "" >> "$OUTFILE"
 		return
 	fi
