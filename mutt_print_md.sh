@@ -10,7 +10,7 @@
 # - $1.pdf
 
 # Add to your .muttrc something like:
-# set print_command='set -e; f=`mktemp --tmpdir="$HOME" muttprint_XXXXXX`; /home/evert/bin/mutt_print_md.sh "$f"; clear; echo -e "\n\n\n\t📨 printed to files:\n\n\n\t- $f.md\n\n\t- $f.pdf\n\n"'
+# set print_command='set -e; f=`mktemp --tmpdir="$HOME" mutt_XXXXX`; /home/evert/bin/mutt_print_md.sh "$f"'
 
 # An alternative is muttprint, which has way more options and looks more interesting.
 # However I wanted Markdown formatted output and Pandoc integration;
@@ -20,21 +20,75 @@
 
 # Evert Mouw <post@evert.net>
 # 2019-01-17 first version
+# 2019-01-18 various improvements
+
+# This file is utf-8 encoded and contains unicode color emoji.
+
+# TODO: enhance printing of html mails and attachments
+#
+# Possible improvement: also html-mail printing, maybe attachment printing
+# In muttrc, enable:
+#   set print_decode = 'no';
+# And pipe the mutt output (print_command) to a smarter application.
+# Possible candidates are:
+# 
+# cedilla
+# good unicode support, but can it print email?
+# https://www.irif.fr/~jch/software/cedilla/
+# http://www.linuxcertif.com/man/1/cedilla/
+#
+# case for cedilla, against enscript
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=229595
+#
+# enscript
+# lacks utf-8 support, bad!
+# https://www.gnu.org/software/enscript/
+# example:
+# enscript --font=Courier8 $INPUT -2r --word-wrap --fancy-header=mutt -p - 2>/dev/null 
+# https://unix.stackexchange.com/questions/324630/how-do-i-process-text-before-i-hand-it-over-to-enscript-or-how-do-i-print-utf8/324640
+# another example:
+# set print_command="enscript --word-wrap --margins=::: -f 'Times-Roman11' -F 'TimesRoman14' --fancy-header='enscript' -i3"
+# https://mutt-users.mutt.narkive.com/ipm6bmoW/printing-messages-setting-fontsize
+#
+# mhonarc
+# https://www.mhonarc.org/
+# http://www.mhonarc.org/MHonArc/doc/rcfileexs/utf-8-encode.mrc.html
+# example:
+# https://linuxgazette.net/182/brownss.html
 
 # ------
 # settings you can modify
+# refer to pandoc website
 FONT="DejaVu Sans"
 FONTSIZE=12
+GEOMETRY="a4paper,margin=1in"
 
 # ------
 # don't mess below here
+
+# clear screen so while in mutt and printing,
+# you don't see old status info or garbage
+clear
+echo ""
+echo "$0 active..."
+echo "Exporting ('printing') to markdown and pdf!"
+echo ""
+echo "Creating the pdf from markdown takes awhile ⏳"
+echo ""
+echo ""
 
 OUTFILE="$1"
 
 if [[ $OUTFILE == "" ]]
 then
+	# show error
+	clear
+	echo ""
+	echo "ERROR ⚠️"
+	echo ""
 	echo "I need one argument, a filename (without extension)."
 	echo "This script is used to print emails from whithin Mutt."
+	echo ""
 	exit 1
 fi
 
@@ -174,19 +228,26 @@ function yamlheader {
 	printline "---"
 	printline "mainfont: $FONT"
 	printline "fontsize: $FONTSIZE"
-	printline 'geometry: "a4paper,margin=1in"'
+	printline "geometry: \"$GEOMETRY\""
 	printline "---"
 	printline ""
 }
 
 # create PDF metadata
 function pdfmeta {
+	PDFDATE=$(date --utc --date="$DATE" "+%Y%m%d%H%M%S")
+	PDFDATE="${PDFDATE}+00'00'"
+	MODDATE=$(date --utc "+%Y%m%d%H%M%S")
+	MODDATE="${MODDATE}+00'00'"
 	printline "
 \hypersetup{
   pdfinfo={
-   Title={Email},
+   Title={Email pdf export},
    Author={$FROM},
    Subject={$SUBJECT},
+   Keywords={mutt, mutt_print_md, email, markdown, pandoc},
+   CreationDate={D:${PDFDATE}},
+   ModDate={D:${MODDATE}}
   }
 }
 "
@@ -224,15 +285,49 @@ do
 	((i++))
 done
 
+# better filenames, including Date / Subject / From
+# note: this uses GNU date and localhost timezone
+ISODATE=$(date --date="$DATE" "+%Y-%m-%dT%H%M")
+SUBWRD1=$(echo "$SUBJECT" | egrep -o '[a-zA-Z0-9]+' | head -n1)
+SUBWRD2=$(echo "$SUBJECT" | egrep -o '[a-zA-Z0-9]+' | head -n2)
+USERID1=$(echo "$FROM"    | egrep -o '[a-zA-Z0-9]+' | head -n1)
+DESCRIP="${ISODATE} ${SUBWRD1}_${SUBWRD2} ${USERID1}"
+DESCRIP=${DESCRIP//[$'\n']} # remove newlines
+DIR=$(dirname "$OUTFILE")
+BASE=$(basename "$OUTFILE")
+FILEPATH1="${DIR}/${DESCRIP} ${BASE}"
+MD_FILE="${FILEPATH1}.md"
+PDFFILE="${FILEPATH1}.pdf"
+
 # copy the file to a markdown file
-MDFILE="$OUTFILE.md"
-cp "$OUTFILE" "$MDFILE"
+cp "$OUTFILE" "$MD_FILE"
 
 # use pandoc for pdf creation
-PDFFILE="$OUTFILE.pdf"
-PANDOCOPTIONS="--pdf-engine xelatex"
-pandoc -f markdown -t latex ${PANDOCOPTIONS} "$MDFILE" -o "$PDFFILE"
+PANDOCOPTIONS="-f markdown -t latex --pdf-engine xelatex"
+pandoc ${PANDOCOPTIONS} "$MD_FILE" -o "$PDFFILE"
+if [[ $? -gt 0 ]]
+then
+	echo "ERROR: pandoc failed...⚠️ "
+	echo ""
+	echo "(waiting 6 sec)"
+	sleep 6
+	exit 1
+fi
 
 # clean up
 rm "$OUTFILE"
 
+# show results
+echo "
+
+Mail exported to files 📨
+
+
+- $MD_FILE
+
+- $PDFFILE
+
+
+"
+# at this point, mutt asks to press a key to return to mutt...
+# end of script
