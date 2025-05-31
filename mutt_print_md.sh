@@ -226,12 +226,14 @@ function printheaders {
 
 # create YAML header
 function yamlheader {
-	printline "---"
-	printline "mainfont: $FONT"
-	printline "fontsize: $FONTSIZE"
-	printline "geometry: \"$GEOMETRY\""
-	printline "---"
-	printline ""
+  printline "---"
+  printline "title: $SUBJECT"
+  printline "id: $(date +"%Y%m%d%H%M%S")"
+  printline "tags: CLI/clientName communications"
+  printline "follow_up: "
+  printline "date: $(date +"%Y-%m-%d")"
+  printline "---"
+  printline ""
 }
 
 # create PDF metadata
