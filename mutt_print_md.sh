@@ -61,7 +61,7 @@
 # settings you can modify
 # refer to pandoc website
 FONT="DejaVu Sans"
-FONTSIZE=12
+FONTSIZE=9
 GEOMETRY="letterpaper,margin=1in"
 
 # ------
