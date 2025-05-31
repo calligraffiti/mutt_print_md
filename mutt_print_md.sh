@@ -55,13 +55,14 @@
 # http://www.mhonarc.org/MHonArc/doc/rcfileexs/utf-8-encode.mrc.html
 # example:
 # https://linuxgazette.net/182/brownss.html
+# Output Geometry -- Changed from "a4paper,margin=1in" to letterpaper
 
 # ------
 # settings you can modify
 # refer to pandoc website
 FONT="DejaVu Sans"
 FONTSIZE=12
-GEOMETRY="a4paper,margin=1in"
+GEOMETRY="letterpaper,margin=1in"
 
 # ------
 # don't mess below here
